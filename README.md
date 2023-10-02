@@ -84,15 +84,10 @@ We found it to be a revolutionary change if we could control our systems with no
 
 ### YouTube Videos
 
-- [Link 1](https://www.youtube.com/watch?v=ieXQTtQgyo0&t=15s)
-- [Link 2](https://www.youtube.com/watch?v=trIwJ17YmsI)
-- [Link 3](https://www.youtube.com/watch?v=DZMJ77akgec)
-- [Link 4](https://www.youtube.com/watch?v=VPaFV3QBsEw)
-- [Link 5](https://www.youtube.com/watch?v=lSknpQyfrRk)
-- [Link 6](https://www.youtube.com/watch?v=3xfOa4yeOb0)
-- [Link 7](https://www.youtube.com/watch?v=6DxN8G9vB50)
-- [Link 8](https://www.youtube.com/watch?v=jzXZVFqEE2I)
-- [Link 9](https://www.youtube.com/watch?v=8gPONnGIPgw)
+- [Learn Computer Vision with CVZone in 2 Hours](https://www.youtube.com/watch?v=ieXQTtQgyo0&t=15s)
+- [Coffee Machine Virtual Interface using Computer Vision](https://www.youtube.com/watch?v=trIwJ17YmsI)
+- [Multiple Hand Gesture Control with OpenCV Python | CVZone](https://www.youtube.com/watch?v=3xfOa4yeOb0)
+- [Virtual Drag and Drop using OpenCV Python | CVZone](https://www.youtube.com/watch?v=6DxN8G9vB50)
 
 ### Kaggle Datasets
 
