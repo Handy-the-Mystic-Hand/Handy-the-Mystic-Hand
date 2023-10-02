@@ -45,7 +45,7 @@ Hand Posture Control
 - Control the mouse and click
 - Keyless Keyboard
 - Custom Designs:
-  - Instrumentness Instruments, Controlness Controller
+  - Instrumentness Music Instruments, Controlness Controller
   - Shut down the screen, Volume control, Swipe left and swipe right of the screen, Zoom in and zoom out
   - And more
 
@@ -54,6 +54,7 @@ Hand Posture Control
 - [Leap Gesture Recognition Dataset](https://www.kaggle.com/datasets/gti-upm/leapgestrecog)
 - [ASL Dataset](https://www.kaggle.com/datasets/ayuraj/asl-dataset)
 - [Hand Sign Images Dataset](https://www.kaggle.com/datasets/ash2703/handsignimages)
+- [Hand Gesture Recognition Database](https://www.kaggle.com/datasets/gti-upm/leapgestrecog)
 
 ## Paper References
 
