@@ -1,19 +1,28 @@
 import os
-
 import cv2
-
 
 DATA_DIR = './data'
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-number_of_classes = 3
+# Define the number of images to collect for each class
 dataset_size = 100
 
+# Ask the user how many classes they want to collect
+number_of_classes = int(input("Enter the number of new classes to collect: "))
+
+# Find the starting class based on existing directories
+existing_dirs = [int(dir_name) for dir_name in os.listdir(DATA_DIR) if dir_name.isdigit()]
+if existing_dirs:
+    start_class = max(existing_dirs) + 1
+else:
+    start_class = 0
+
 cap = cv2.VideoCapture(1)
-for j in range(number_of_classes):
-    if not os.path.exists(os.path.join(DATA_DIR, str(j))):
-        os.makedirs(os.path.join(DATA_DIR, str(j)))
+for j in range(start_class, start_class + number_of_classes):
+    class_dir = os.path.join(DATA_DIR, str(j))
+    if not os.path.exists(class_dir):
+        os.makedirs(class_dir)
 
     print('Collecting data for class {}'.format(j))
 
@@ -32,7 +41,6 @@ for j in range(number_of_classes):
         cv2.imshow('frame', frame)
         cv2.waitKey(25)
         cv2.imwrite(os.path.join(DATA_DIR, str(j), '{}.jpg'.format(counter)), frame)
-
         counter += 1
 
 cap.release()
