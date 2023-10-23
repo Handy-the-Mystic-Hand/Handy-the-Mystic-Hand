@@ -1,0 +1,8 @@
+.data
+.database
+.leapGestRecog
+.simi100
+model.p
+*.pickle
+*.pkl
+*.p
