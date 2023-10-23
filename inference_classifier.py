@@ -65,6 +65,7 @@ while True:
                 y2 = int(max(y_) * H) - 10
 
                 prediction = model.predict([np.asarray(data_aux)])
+                print(prediction)
 
                 predicted_character = labels_dict[int(prediction[0])]
 
