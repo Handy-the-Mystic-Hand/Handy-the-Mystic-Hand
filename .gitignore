@@ -6,3 +6,6 @@ model.p
 *.pickle
 *.pkl
 *.p
+backend/database
+backend/download
+backend/newHand
