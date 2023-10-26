@@ -53,6 +53,8 @@ if __name__ == "__main__":
     processed_images_pickle = "backend/bonesPickle.pickle"
     bonesPath = "backend/bones"
     newHandPath = "backend/newHand"
+    if os.path.exists(newHandPath):
+        os.makedirs(newHandPath)
     if os.path.exists(processed_images_pickle):
         processed_images = cpkl.load_from_pickle(processed_images_pickle)
     else:
