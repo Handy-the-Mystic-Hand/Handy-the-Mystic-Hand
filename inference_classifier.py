@@ -5,8 +5,11 @@ import mediapipe as mp
 import numpy as np
 import pyautogui
 
-model_dict = pickle.load(open('./model.p', 'rb'))
-model = model_dict['model']
+models = []
+for i in range(3):
+    model_name = "./model" + str(i) + ".p"
+    model_dict = pickle.load(open(model_name, 'rb'))
+    models.append(model_dict['model'])
 
 cap = cv2.VideoCapture(0)
 
@@ -16,9 +19,9 @@ mp_drawing_styles = mp.solutions.drawing_styles
 
 hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
-labels_dict = dict([(i, str(i)) for i in range(model.n_classes_)])
-
 screen_width, screen_height = pyautogui.size()
+mouse_on = False
+in_action = False
 while True:
 
     data_aux = []
@@ -64,25 +67,31 @@ while True:
                 x2 = int(max(x_) * W) - 10
                 y2 = int(max(y_) * H) - 10
 
-                prediction = model.predict([np.asarray(data_aux)])
+                possible = {}
+                for i in range(3):
+                    if models[i].predict([np.asarray(data_aux)]) == 1:
+                        probs = models[i].predict_proba([np.asarray(data_aux)])
+                        possible.update({probs[0][1]: i})
+                if possible:
+                    highest = sorted(possible.items(), key=lambda x: x[0])[0][1]
+                    if not in_action and highest == 2:
+                        in_action = True
+                        mouse_on = False
+                    if in_action and highest == 1:
+                        mouse_on = True
+                        in_action = False
+                    if mouse_on:
+                        index_x = hand_landmarks.landmark[8].x * screen_width
+                        index_y = hand_landmarks.landmark[8].y * screen_height
+                        pyautogui.moveTo(index_x, index_y)
+                    if in_action and highest == 0:
+                        pyautogui.click()
+                        in_action = False
 
-                predicted_character = labels_dict[int(prediction[0])]
 
-                if predicted_character == "0":
-                    pyautogui.click()
-                    pyautogui.sleep(1)
-
-                if predicted_character == "1":
-                    index_x = hand_landmarks.landmark[8].x * screen_width
-                    index_y = hand_landmarks.landmark[8].y * screen_height
-                    pyautogui.moveTo(index_x, index_y)
-
-                if predicted_character == "2":
-                    pyautogui.press('esc')
-
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 4)
-                cv2.putText(frame, predicted_character, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 0, 0), 3,
-                            cv2.LINE_AA)
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 0, 0), 4)
+                    cv2.putText(frame, str(highest), (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 1.3,
+                                (0, 0, 0), 3, cv2.LINE_AA)
 
     cv2.imshow('frame', frame)
     if cv2.waitKey(1) & 0xFF == 27:
