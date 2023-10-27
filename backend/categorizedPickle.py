@@ -17,6 +17,23 @@ def load_from_pickle(filename):
     with open(filename, "rb") as f:
         return pickle.load(f)
 
+def compute_similarity(landmarks1, landmarks2):
+    # Convert to numpy array
+    landmarks1_np = np.array([(l['x'], l['y']) for l in landmarks1])
+    landmarks2_np = np.array([(l['x'], l['y']) for l in landmarks2])
+    
+    # Normalize (using the distance between the first two landmarks as an example)
+    normalization_factor1 = np.linalg.norm(landmarks1_np[0] - landmarks1_np[1])
+    normalization_factor2 = np.linalg.norm(landmarks2_np[0] - landmarks2_np[1])
+    
+    landmarks1_np /= normalization_factor1
+    landmarks2_np /= normalization_factor2
+    
+    # Compute distances
+    distances = np.linalg.norm(landmarks1_np - landmarks2_np, axis=1)
+    return np.mean(distances)
+
+
 # Function to save data to a pickle file
 def save_to_pickle(data, filename):
     with open(filename, "wb") as f:
@@ -52,25 +69,18 @@ def get_landmarks(image_path, hands_processor):
         return normalize_landmarks(results.multi_hand_landmarks[0].landmark)
     return None
 
-class Category:
-    def __init__(self, dir_path, boneImg, pickle_path):
-        self.pickle_path = pickle_path
-        self.dir_path = dir_path
-        self.boneImg = boneImg
-
-
 class HandDatabase:
-    def __init__(self, bones_path, database_path, pickle_path, hands_processor):
+    def __init__(self, bones_path, database_path, pickle_path, download_path, hands_processor):
         self.bones_path = bones_path
         self.database_path = database_path
         self.hands_processor = hands_processor
-        self.catrgory_list = []
+        self.download_path = download_path
         if not os.path.exists(pickle_path):
             os.makedirs(pickle_path)
         self.pickle_path = os.path.join(pickle_path, "./bonesPickle.pickle")
 
         if os.path.exists(self.pickle_path):
-            self.processed_images = self.load_from_pickle(pickle_path)
+            self.processed_images = load_from_pickle(self.pickle_path)
         else:
             self.processed_images = []
             
@@ -84,8 +94,10 @@ class HandDatabase:
                 if not landmarks:
                     continue
                 timestamp = datetime.now()
+                image_already_processed = False
                 for index, image in enumerate(self.processed_images):
                     if image[0] == image_path:
+                        image_already_processed = True
                         if self.image_was_modified(image[0], image[2]):
                             # Image was modified since the last time
                             # Update the tuple in processed_images with new landmarks and timestamp
@@ -93,18 +105,19 @@ class HandDatabase:
                             self.processed_images[index] = updated_image_data
                             # Set a flag if you want to track modifications
                             new_images = True
-                        else:
-                            continue
-                else:
+                        break  # Break the loop if we found a match
+
+                if not image_already_processed:
                     self.processed_images.append((image_path, landmarks, timestamp))
                     new_images = True
+
         # If there are new images, update the bones pickle file
         if new_images:
             for index, image in enumerate(self.processed_images):
                 updated_image_data = (image[0], image[1], image[2], index)  # Add order
                 self.processed_images[index] = updated_image_data
             save_to_pickle(self.processed_images, self.pickle_path)
-        
+
     def image_was_modified(self, image_path, processed_time):
         """Check if the image at image_path was modified since last processed."""
         current_timestamp = os.path.getmtime(image_path)
@@ -114,6 +127,18 @@ class HandDatabase:
     def update_processed_images(self, image_path, processed_images):
         """Update the timestamp for the image at image_path in processed_images."""
         processed_images[image_path] = os.path.getmtime(image_path)
+
+
+    def distrubteDownload(self):
+        # Walk through the directory
+        for dirpath, dirnames, filenames in tqdm(os.walk(self.download_path), desc="Processing directories", unit="dir"):
+            print(len(self.processed_images))
+            for filename in filenames:
+                # Join the directory path and file name to get the full path
+                full_path = os.path.join(dirpath, filename)
+                if is_image(full_path):
+                    self.addToDB(full_path)
+
 
     def generateDatabase(self):
         if not os.path.exists(self.database_path):
@@ -127,11 +152,34 @@ class HandDatabase:
             target_dir = os.path.join(self.database_path, dir_name)
             if not os.path.exists(target_dir):
                 os.makedirs(target_dir)
-            category_path = self.pickle_path + "/" + str(data[3])
             shutil.copy2(img_path, target_dir)
-            category = Category(target_dir, data, category_path)
-            self.catrgory_list.append(category)
-    
+
+    def addToDB(self, full_path):
+        normalized_img = get_landmarks(full_path, self.hands_processor)
+        if normalized_img == None:
+            return
+
+        maxSimilar = float('inf')  # Using negative infinity to ensure we always get a max value
+        maxSimilarName = None
+
+        for bone in self.processed_images:
+            similarity_score = compute_similarity(normalized_img, bone[1])
+            if similarity_score < maxSimilar:
+                maxSimilar = similarity_score
+                maxSimilarName = bone[0]
+        print(maxSimilar)
+        if maxSimilar > 0.3:  # Threshold check
+            shutil.copy2(full_path, newHandPath)
+            return
+
+        # Get directory of the most similar bone
+        filename = os.path.basename(maxSimilarName)
+        dir_name = os.path.splitext(filename)[0]
+        target_dir = os.path.join(self.database_path, dir_name)
+
+        # Copy incoming image to that directory
+        shutil.copy2(full_path, target_dir)
+
 if __name__ == "__main__":
     mp_hands = mp.solutions.hands
     hands_processor = mp_hands.Hands(static_image_mode=True)
@@ -140,6 +188,7 @@ if __name__ == "__main__":
     pickle_path = "backend/pickles"
     bones_path = "backend/bones"
     newHandPath = "backend/newHand"
-    database = HandDatabase(bones_path, database_path, pickle_path, hands_processor)
+    database = HandDatabase(bones_path, database_path, pickle_path, download_path, hands_processor)
     database.boneStructure()
     database.generateDatabase()
+    database.distrubteDownload()
