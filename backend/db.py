@@ -48,7 +48,7 @@ class EmbeddingExtractor:
 # --- Utility Functions ---
 def rename_files(directory):
     # Get all files in the directory
-    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.lower().endswith('.jpeg')]
+    files = [f for f in os.listdir(directory) if os.path.isfile(os.path.join(directory, f)) and f.lower().endswith('.png')]
 
     
     # Sort the files to ensure consistent ordering
@@ -57,7 +57,7 @@ def rename_files(directory):
     # Rename files
     for i, filename in enumerate(files):
         old_path = os.path.join(directory, filename)
-        new_path = os.path.join(directory, f"{i:02}.jpg")  # formatted to have at least two digits
+        new_path = os.path.join(directory, f"{i}.png")  # formatted to have at least two digits
         os.rename(old_path, new_path)
 
     print(f"Renamed {len(files)} files in {directory}.")
@@ -73,6 +73,27 @@ def save_to_pickle(data, filename):
     with open(filename, "wb") as f:
         pickle.dump(data, f)
 
+def crop_hand_from_frame(frame_rgb, landmarks, pixel_margin=100):
+    x_coordinates = [landmark.x for landmark in landmarks]
+    y_coordinates = [landmark.y for landmark in landmarks]
+    xmin, xmax = min(x_coordinates), max(x_coordinates)
+    ymin, ymax = min(y_coordinates), max(y_coordinates)
+    height, width, _ = frame_rgb.shape
+
+    # Add fixed pixel margin to the bounding box
+    xmin_pixel = int(xmin * width) - pixel_margin
+    xmax_pixel = int(xmax * width) + pixel_margin
+    ymin_pixel = int(ymin * height) - pixel_margin
+    ymax_pixel = int(ymax * height) + pixel_margin
+
+    # Ensure values are within frame boundaries
+    xmin_pixel = max(0, xmin_pixel)
+    ymin_pixel = max(0, ymin_pixel)
+    xmax_pixel = min(width, xmax_pixel)
+    ymax_pixel = min(height, ymax_pixel)
+
+    return frame_rgb[ymin_pixel:ymax_pixel, xmin_pixel:xmax_pixel]
+
 class HandDatabase:
     def __init__(self, bones_path, database_path, pickle_dir, download_path, newHand_path, hands_processor):
         self.bones_path = bones_path
@@ -80,18 +101,23 @@ class HandDatabase:
         self.download_path = download_path
         self.hands_processor = hands_processor
         self.embedding_extractor = EmbeddingExtractor()
+        self.newHand_path = newHand_path
         os.makedirs(pickle_dir, exist_ok=True)
-        self.pickle_path = os.path.join(pickle_dir, "/bonesPickle.pickle")
+        self.pickle_path = os.path.join(pickle_dir, "bonesPickle.pickle")
 
         # Ensure directories exist
         os.makedirs(self.bones_path, exist_ok=True)  
         os.makedirs(self.database_path, exist_ok=True)
         os.makedirs(self.download_path, exist_ok=True)
+        os.makedirs(self.newHand_path, exist_ok=True)
         
         if os.path.exists(self.pickle_path):
             self.processed_images = load_from_pickle(self.pickle_path)
+            self.last_image_id = max([int(os.path.splitext(img[0].split('/')[-1])[0]) for img in self.processed_images]) + 1
         else:
             self.processed_images = []
+            self.last_image_id = 0
+
 
     def _save_embedding(self, image_path):
         """Utility function to save embedding."""
@@ -118,7 +144,7 @@ class HandDatabase:
 
     def generate_database(self):
         for data in tqdm(self.processed_images, desc="Creating database", unit="bonetuple"):
-            img_path, _, _, _ = data
+            img_path, _, _,= data
             filename = os.path.basename(img_path)
             target_dir = os.path.join(self.database_path, os.path.splitext(filename)[0])
             os.makedirs(target_dir, exist_ok=True)
@@ -131,17 +157,31 @@ class HandDatabase:
                 if is_image(full_path):
                     self._add_to_db(full_path)
 
+
     def _add_to_db(self, full_path):
-        embedding_img = self.embedding_extractor.get_embedding(full_path)
+        frame_rgb = cv2.imread(full_path, cv2.IMREAD_COLOR)
+
+        # Get the landmarks for this image. Assuming you have some method to do so.
+        results = self.hands_processor.process(frame_rgb)
+        if not results.multi_hand_landmarks:
+            shutil.copy2(full_path, self.newHand_path)
+            return
+        # Crop the hand from the frame
+        cropped_hand = crop_hand_from_frame(frame_rgb, results.multi_hand_landmarks[0].landmark, pixel_margin=100)
+        
+        # Save the cropped hand to a temporary location to get the path
+        tmp_path = os.path.join("./", "temp_hand.png")
+        cv2.imwrite(tmp_path, cropped_hand)
+            
+        embedding_img = self.embedding_extractor.get_embedding(tmp_path)
         closest_image, similarity = self._find_most_similar(embedding_img)
         print(similarity)
         if similarity < 0.70:  # Adjust threshold if needed
-            shutil.copy2(full_path, "backend/newHand")
+            shutil.copy2(full_path, self.newHand_path)
         else:
             dir_name = os.path.splitext(os.path.basename(closest_image))[0]
             target_dir = os.path.join(self.database_path, dir_name)
             shutil.copy2(full_path, target_dir)
-
 
     def collect_hand_gesture_data(self, capture_delay=1):
         # Determine the starting class name based on existing filenames.
@@ -176,9 +216,7 @@ class HandDatabase:
                     print(f'Collecting data for class: {start_class}')
                     print(f'Position your hand and press "Q" to start collecting 1 samples...')
                     
-                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)  # Convert frame to RGB
-
-                    # Check if hand landmarks can be found
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     results = self.hands_processor.process(frame_rgb)
                     if not results.multi_hand_landmarks:
                         print("No hand landmarks detected.")
@@ -186,7 +224,8 @@ class HandDatabase:
                         cv2.imshow('frame', frame)
                         cv2.waitKey(1000)  # Pause for a bit before trying again
                         continue
-
+                    
+                    frame_rgb = crop_hand_from_frame(frame_rgb, results.multi_hand_landmarks[0].landmark)
                     # If hand landmarks are found, check its similarity using embeddings
                     saved_image_path = self._frame_to_image_path(frame_rgb)
                     new_embedding = self.embedding_extractor.get_embedding(saved_image_path)
@@ -197,11 +236,13 @@ class HandDatabase:
                     if current_similarity < 0.90:
                         accepted = True  # Update the flag
                         start_class += 1
+                        self.last_image_id += 1
                         self._save_embedding(saved_image_path)
                         cv2.putText(frame, f'Accepted: {start_class}', (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
                         cv2.imshow('frame', frame)
                         cv2.waitKey(1000)
                     else:
+                        os.remove(saved_image_path)
                         cv2.putText(frame, 'Too similar, try again', (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
                         cv2.imshow('frame', frame)
                         cv2.waitKey(1000)  # Pause for a bit before trying again
@@ -215,8 +256,7 @@ class HandDatabase:
     
     def _frame_to_image_path(self, frame, filename_prefix="frame_"):
         """ Saves a frame in the 'bones' directory and returns the image path. """
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        saved_image_path = os.path.join(self.bones_path, f"{filename_prefix}{timestamp}.png")
+        saved_image_path = os.path.join(self.bones_path, f"{self.last_image_id}.png")
         cv2.imwrite(saved_image_path, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
         return saved_image_path
 
@@ -231,7 +271,7 @@ if __name__ == "__main__":
         download_path="backend/download",
         newHand_path="backend/newHand",
         hands_processor=hands_processor)
-    database.collect_hand_gesture_data()
-    # database.bone_structure()
-    # database.generate_database()
-    # database.distribute_downloads()
+    # database.collect_hand_gesture_data()
+    database.bone_structure()
+    database.generate_database()
+    database.distribute_downloads()
