@@ -57,13 +57,13 @@ def save_to_pickle(data, filename):
     with open(filename, "wb") as f:
         pickle.dump(data, f)
 
-def get_landmarks(image_path, hands_processor):
-    img = cv2.imread(image_path, cv2.IMREAD_COLOR)  # Forces the image to be read in RGB format.
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    results = hands_processor.process(img_rgb)
-    if results.multi_hand_landmarks:
-        return normalize_landmarks(results.multi_hand_landmarks[0].landmark)
-    return None
+# def get_landmarks(image_path, hands_processor):
+#     img = cv2.imread(image_path, cv2.IMREAD_COLOR)  # Forces the image to be read in RGB format.
+#     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+#     results = hands_processor.process(img_rgb)
+#     if results.multi_hand_landmarks:
+#         return normalize_landmarks(results.multi_hand_landmarks[0].landmark)
+#     return None
 
 # --- Similarity and Normalization Functions ---
 # def compute_similarity(landmarks1, landmarks2):
@@ -90,18 +90,26 @@ def normalize_landmarks(landmarks):
 
 # --- Main HandDatabase Class ---
 class HandDatabase:
-    def __init__(self, bones_path, database_path, pickle_path, download_path, hands_processor):
+    def __init__(self, bones_path, database_path, pickle_dir, download_path, newHand_path, hands_processor):
         self.bones_path = bones_path
         self.database_path = database_path
         self.download_path = download_path
         self.hands_processor = hands_processor
         self.embedding_extractor = EmbeddingExtractor()
-        self.pickle_path = os.path.join(pickle_path, "bonesPickle.pickle")
+        os.makedirs(pickle_dir, exist_ok=True)
+        self.pickle_path = os.path.join(pickle_dir, "bonesPickle.pickle")
+
+        # Ensure directories exist
+        os.makedirs(self.bones_path, exist_ok=True)  
+        os.makedirs(self.database_path, exist_ok=True)
+        os.makedirs(self.download_path, exist_ok=True)
+        
         if os.path.exists(self.pickle_path):
             self.processed_images = load_from_pickle(self.pickle_path)
         else:
-            os.makedirs(pickle_path, exist_ok=True)
+            os.makedirs(self.pickle_path, exist_ok=True)
             self.processed_images = []
+
 
     def bone_structure(self):
         new_images = False
@@ -144,7 +152,6 @@ class HandDatabase:
         closest_image, similarity = self._find_most_similar(embedding_img)
         print(similarity)
         if similarity < 0.70:  # Adjust threshold if needed
-            os.makedirs("backend/newHand", exist_ok=True)
             shutil.copy2(full_path, "backend/newHand")
         else:
             dir_name = os.path.splitext(os.path.basename(closest_image))[0]
@@ -160,16 +167,113 @@ class HandDatabase:
             if similarity > max_similarity:
                 max_similarity = similarity
                 closest_image = bone[0]
-        return closest_image, max_similarity
+        return (closest_image, max_similarity)
+    
+    def _find_frame_most_similar(self, embedding):
+        max_similarity = float('-inf')
+        closest_image = None
+        for bone in self.processed_images:
+            bone_embedding = self.embedding_extractor.get_embedding(bone[0])
+            similarity = self.embedding_extractor.cosine_similarity(embedding, bone_embedding)
+            if similarity > max_similarity:
+                max_similarity = similarity
+                closest_image = bone[0]
+        return (closest_image, max_similarity)
 
     def generate_database(self):
-        os.makedirs(self.database_path, exist_ok=True)
         for data in tqdm(self.processed_images, desc="Creating database", unit="bonetuple"):
             img_path, _, _, _ = data
             filename = os.path.basename(img_path)
             target_dir = os.path.join(self.database_path, os.path.splitext(filename)[0])
             os.makedirs(target_dir, exist_ok=True)
             shutil.copy2(img_path, target_dir)
+
+    def _add_to_bones(self, saved_image_path, index):
+        embedding_img = self.embedding_extractor.get_embedding(saved_image_path)
+        closest_image, similarity = self._find_frame_most_similar(embedding_img)
+        print(similarity)
+        if similarity > 0.80:  # Adjust threshold if needed
+            return (False, closest_image, similarity)
+        else:
+            timestamp = datetime.now()
+            frame = cv2.imread(saved_image_path)  # Reading the image from the path
+            saved_dest_path = os.path.join(self.bones_path, f"{index}.png")
+            cv2.imwrite(saved_dest_path, frame)
+            
+            self.processed_images.append((saved_dest_path, embedding_img, timestamp))
+            return (True, closest_image, similarity)
+
+    def _frame_to_image_path(self, frame, filename_prefix="frame_"):
+        """ Saves a frame in the 'bones' directory and returns the image path. """
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        saved_image_path = os.path.join(self.bones_path, f"{filename_prefix}{timestamp}.png")
+        cv2.imwrite(saved_image_path, cv2.cvtColor(frame, cv2.COLOR_RGB2BGR))
+        return saved_image_path
+        
+    def collect_hand_gesture_data(self, capture_delay=1):
+        existing_files = os.listdir(self.bones_path)
+        # Determine the starting class name based on existing filenames.
+        if len(existing_files) == 0:
+            start_class = 0
+            
+        else:
+            start_class = len(existing_files) + 1
+
+        number_of_classes = int(input("Enter the number of new classes to collect: "))
+        number_of_classes += start_class
+        cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            print("Error: Could not open webcam.")
+            return
+
+        while start_class < number_of_classes:
+            class_name = start_class 
+            print(f'Collecting data for class: {class_name}')
+            print(f'Position your hand and press "Q" to start collecting 1 samples...')
+
+            while True:
+                ret, frame = cap.read()
+                frame = cv2.flip(frame, 1)
+                cv2.putText(frame, 'Press "Q" to start!', (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
+                cv2.imshow('frame', frame)
+                
+                if cv2.waitKey(25) == ord('q'):
+                    break
+        
+            ret, frame = cap.read()
+            cv2.putText(frame, f'Capturing 1 image', (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
+            cv2.imshow('frame', frame)
+            
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            saved_image_path = self._frame_to_image_path(frame_rgb)
+            results = self.hands_processor.process(frame_rgb)
+            if results.multi_hand_landmarks:
+                hand_landmarks = results.multi_hand_landmarks[0]
+                mp_drawing = mp.solutions.drawing_utils
+                mp_drawing_styles = mp.solutions.drawing_styles
+                mp_drawing.draw_landmarks(
+                    frame,  # image to draw
+                    hand_landmarks,  # model output
+                    mp_hands.HAND_CONNECTIONS,  # hand connections
+                    mp_drawing_styles.get_default_hand_landmarks_style(),
+                    mp_drawing_styles.get_default_hand_connections_style())
+                response = self._add_to_bones(saved_image_path, start_class)
+                if response[0]:
+                    start_class += 1
+                    cv2.imshow('frame', frame)
+                    cv2.waitKey(1000)
+                else:
+                    cv2.putText(frame, 'Too similar' + response[1] , (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
+                    cv2.imshow('frame', frame)
+                    continue
+            else:
+                cv2.putText(frame, 'Cound\'t fina hands, try again', (100, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
+                cv2.imshow('frame', frame)
+                continue
+            
+
+        cap.release()
+        cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     mp_hands = mp.solutions.hands
@@ -178,9 +282,11 @@ if __name__ == "__main__":
     database = HandDatabase(
         bones_path="backend/bones",
         database_path="backend/database",
-        pickle_path="backend/pickles",
+        pickle_dir="backend/pickles",
         download_path="backend/download",
+        newHand_path="backend/newHand",
         hands_processor=hands_processor)
-    database.bone_structure()
-    database.generate_database()
-    database.distribute_downloads()
+    database.collect_hand_gesture_data()
+    # database.bone_structure()
+    # database.generate_database()
+    # database.distribute_downloads()
