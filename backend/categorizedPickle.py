@@ -168,7 +168,7 @@ class HandDatabase:
                 maxSimilar = similarity_score
                 maxSimilarName = bone[0]
         print(maxSimilar)
-        if maxSimilar > 0.3:  # Threshold check
+        if maxSimilar > 0.4:  # Threshold check
             shutil.copy2(full_path, newHandPath)
             return
 
@@ -188,6 +188,7 @@ if __name__ == "__main__":
     pickle_path = "backend/pickles"
     bones_path = "backend/bones"
     newHandPath = "backend/newHand"
+    os.makedirs(newHandPath, exist_ok=True)
     database = HandDatabase(bones_path, database_path, pickle_path, download_path, hands_processor)
     database.boneStructure()
     database.generateDatabase()
