@@ -1,6 +1,5 @@
 import os
 import pickle
-import random
 
 import mediapipe as mp
 import cv2
@@ -16,15 +15,8 @@ hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 DATA_DIR = './data'
 
 data = []
-num_label = 0
-true_label = []
-false_label = []
-for i in range(100):
-    true_label.append(1)
-    false_label.append(0)
+labels = []
 for dir_ in os.listdir(DATA_DIR):
-    num_label += 1
-    sub_data = []
     for img_path in os.listdir(os.path.join(DATA_DIR, dir_)):
         data_aux = []
 
@@ -50,22 +42,9 @@ for dir_ in os.listdir(DATA_DIR):
                     data_aux.append(x - min(x_))
                     data_aux.append(y - min(y_))
 
-            sub_data.append(data_aux)
-    data.append(sub_data)
+            data.append(data_aux)
+            labels.append(int(dir_))
 
-for i in range(num_label):
-    all_datas = []
-    all_labels = []
-    pickle_name = "data" + str(i) + ".pickle"
-    f = open(pickle_name, 'wb')
-    all_datas.extend(data[i])
-    all_labels.extend(true_label)
-    other_data = []
-    for j in range(num_label):
-        if i != j:
-            other_data.extend(data[j])
-    false_data = random.sample(other_data, 100)
-    all_datas.extend(false_data)
-    all_labels.extend(false_label)
-    pickle.dump({'data': all_datas, 'labels': all_labels}, f)
-    f.close()
+f = open('data.pickle', 'wb')
+pickle.dump({'data': data, 'labels': labels}, f)
+f.close()

@@ -1,32 +1,29 @@
 import pickle
 
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-from sklearn.neural_network import MLPClassifier
-import random
 import numpy as np
+import matplotlib.pyplot as plt
 
-for i in range(3):
-    data_name = "data" + str(i) + ".pickle"
-    data_dict = pickle.load(open(data_name, 'rb'))
+data_dict = pickle.load(open('./data.pickle', 'rb'))
 
-    data = np.asarray(data_dict['data'])
-    labels = np.asarray(data_dict['labels'])
+data = np.asarray(data_dict['data'])
 
-    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, shuffle=True, stratify=labels)
+labels = np.asarray(data_dict['labels'])
 
-    model = LogisticRegression()
+x_, x_test, t_, t_test = train_test_split(data, labels, test_size=0.2, shuffle=True, stratify=labels)
 
-    model.fit(x_train, y_train)
+x_train, x_val, t_train, t_val = train_test_split(x_, t_, test_size=0.2, shuffle=True, stratify=t_)
 
-    y_predict = model.predict(x_test)
-    score = accuracy_score(y_predict, y_test)
+model = RandomForestClassifier()
+model.fit(x_train, t_train)
 
-    print('{}% of samples were classified correctly !'.format(score * 100))
+y_predict = model.predict(x_test)
+score = accuracy_score(y_predict, t_test)
 
-    model_name = "model" + str(i) + ".p"
-    f = open(model_name, 'wb')
-    pickle.dump({'model': model}, f)
-    f.close()
+print('{}% of samples were classified correctly !'.format(score * 100))
+
+f = open('model.p', 'wb')
+pickle.dump({'model': model}, f)
+f.close()
