@@ -1,5 +1,8 @@
 import os
 import shutil
+import cv2
+import mediapipe as mp
+import pickle
 def consolidate_images(source_dir, dest_dir, extensions=('.png')):
     total = 0
     if not os.path.exists(dest_dir):
@@ -39,9 +42,42 @@ def rename_files(directory):
 
 # Specify the directory containing the files
 
+def find_hand_from_image(image_path):
+    mp_hands = mp.solutions.hands
+    mp_drawing = mp.solutions.drawing_utils
+    mp_drawing_styles = mp.solutions.drawing_styles
+    hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
+    frame = cv2.imread(image_path)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    results = hands.process(frame_rgb)
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_drawing.draw_landmarks(
+                            frame,  # image to draw
+                            hand_landmarks,  # model output
+                            mp_hands.HAND_CONNECTIONS,  # hand connections
+                            mp_drawing_styles.get_default_hand_landmarks_style(),
+                            mp_drawing_styles.get_default_hand_connections_style())
+        cv2.imshow('Hand Detection', frame)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    else:
+        print("No hand detected")
+    # Close the hand detection object
+    hands.close()
+
+def read_pickle(path):
+    with open(path, "rb") as f:
+        data = pickle.load(f)
+        # Assuming the data is a list or other iterable
+        for item in data:
+            print(item)
+
 if __name__ == "__main__":
-    SOURCE_DIR = "leapGestRecog"
-    DEST_DIR = "database"
+    # SOURCE_DIR = "leapGestRecog"
+    # DEST_DIR = "database"
     # consolidate_images(SOURCE_DIR, DEST_DIR)
-    directory_path = '/Users/haikeyu/Desktop/bones'
-    rename_files(directory_path)
+    # directory_path = '/Users/haikeyu/Desktop/bones'
+    # rename_files(directory_path)
+    # find_hand_from_image("/Users/haikeyu/Desktop/CSC490/Handy-the-Mystic-Hand/backend/bones/2.png")
+    read_pickle("/Users/haikeyu/Desktop/CSC490/Handy-the-Mystic-Hand/backend/pickles/bonesPickle.pickle")

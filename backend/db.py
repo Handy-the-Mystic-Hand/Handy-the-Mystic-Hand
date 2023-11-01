@@ -44,6 +44,7 @@ class EmbeddingExtractor:
         norm1 = np.linalg.norm(embedding1)
         norm2 = np.linalg.norm(embedding2)
         return dot_product / (norm1 * norm2)
+    
 
 # --- Utility Functions ---
 def rename_files(directory):
@@ -61,6 +62,17 @@ def rename_files(directory):
         os.rename(old_path, new_path)
 
     print(f"Renamed {len(files)} files in {directory}.")
+
+def display_media(frame, hands):
+    for hand_landmarks in hands.multi_hand_landmarks:
+        mp_drawing = mp.solutions.drawing_utils
+        mp_drawing_styles = mp.solutions.drawing_styles
+        mp_drawing.draw_landmarks(
+        frame,  # image to draw
+        hand_landmarks,  # model output
+        mp_hands.HAND_CONNECTIONS,  # hand connections
+        mp_drawing_styles.get_default_hand_landmarks_style(),
+        mp_drawing_styles.get_default_hand_connections_style())
 
 def is_image(file_path):
     return imghdr.what(file_path) in ['rgb', 'gif', 'pbm', 'pgm', 'ppm', 'tiff', 'rast', 'xbm', 'jpeg', 'bmp', 'png', 'webp', 'exr']
@@ -113,7 +125,7 @@ class HandDatabase:
         
         if os.path.exists(self.pickle_path):
             self.processed_images = load_from_pickle(self.pickle_path)
-            self.last_image_id = max([int(os.path.splitext(img[0].split('/')[-1])[0]) for img in self.processed_images]) + 1
+            self.last_image_id = len(self.processed_images)
         else:
             self.processed_images = []
             self.last_image_id = 0
@@ -186,7 +198,7 @@ class HandDatabase:
     def collect_hand_gesture_data(self, capture_delay=1):
         # Determine the starting class name based on existing filenames.
         existing_files = os.listdir(self.bones_path)
-        start_class = len(existing_files) + 1 if existing_files else 0
+        start_class = len(existing_files) if existing_files else 0
 
         number_of_classes = int(input("Enter the number of new classes to collect: "))
         number_of_classes += start_class
@@ -225,9 +237,24 @@ class HandDatabase:
                         cv2.waitKey(1000)  # Pause for a bit before trying again
                         continue
                     
-                    frame_rgb = crop_hand_from_frame(frame_rgb, results.multi_hand_landmarks[0].landmark)
+                    crop_frame_rgb = crop_hand_from_frame(frame_rgb, results.multi_hand_landmarks[0].landmark)
+
+                    crop_results = self.hands_processor.process(crop_frame_rgb)
+                    if not crop_results.multi_hand_landmarks:
+                        print("No hand landmarks detected.")
+                        cv2.putText(frame, 'Couldn\'t find hands, try again', (100, 200), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
+                        cv2.imshow('frame', frame)
+                        cv2.waitKey(1000)  # Pause for a bit before trying again
+                        continue
+
+                    crop_frame_rgb = cv2.resize(crop_frame_rgb, (256, 256))
+                    copy = crop_frame_rgb.copy()
+                    display_media(copy, crop_results)
+                    cv2.imshow('frame', copy)
+                    cv2.waitKey(1000)
+ 
                     # If hand landmarks are found, check its similarity using embeddings
-                    saved_image_path = self._frame_to_image_path(frame_rgb)
+                    saved_image_path = self._frame_to_image_path(crop_frame_rgb)
                     new_embedding = self.embedding_extractor.get_embedding(saved_image_path)
                     current_similarity = self._find_most_similar(new_embedding)[1]
                     print(f"Calculated similarity: {current_similarity}")
@@ -246,14 +273,10 @@ class HandDatabase:
                         cv2.putText(frame, 'Too similar, try again', (100, 150), cv2.FONT_HERSHEY_SIMPLEX, 1.3, (0, 255, 0), 3, cv2.LINE_AA)
                         cv2.imshow('frame', frame)
                         cv2.waitKey(1000)  # Pause for a bit before trying again
-
             cap.release()
-            cv2.destroyAllWindows()
-        rename_files(self.bones_path)
         save_to_pickle(self.processed_images, self.pickle_path)
         
-
-    
+  
     def _frame_to_image_path(self, frame, filename_prefix="frame_"):
         """ Saves a frame in the 'bones' directory and returns the image path. """
         saved_image_path = os.path.join(self.bones_path, f"{self.last_image_id}.png")
@@ -274,4 +297,4 @@ if __name__ == "__main__":
     # database.collect_hand_gesture_data()
     database.bone_structure()
     database.generate_database()
-    database.distribute_downloads()
+    # database.distribute_downloads()

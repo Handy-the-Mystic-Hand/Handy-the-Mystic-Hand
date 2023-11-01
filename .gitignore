@@ -4,6 +4,7 @@
 .simi100
 model.p
 *.pickle
+*.png
 *.pkl
 *.p
 backend/database
