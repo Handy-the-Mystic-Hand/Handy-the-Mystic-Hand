@@ -2,12 +2,12 @@ import os
 import cv2
 import mediapipe as mp
 import numpy as np
-import pickle
+import dill
 import shutil
 from tqdm import tqdm
 import imghdr
 from datetime import datetime
-
+import pickle
 import torch
 import torch.nn as nn
 import torchvision.models as models
@@ -21,7 +21,6 @@ class EmbeddingExtractor:
         # Remove the final classification layer to get embeddings
         self.model = nn.Sequential(*list(self.model.children())[:-1])
         self.model.eval()
-
         self.preprocess = transforms.Compose([
             transforms.Resize(256),
             transforms.CenterCrop(224),
@@ -56,6 +55,7 @@ class HandDatabase:
         self.embedding_extractor = EmbeddingExtractor()
         self._ensure_directories_exist()
         self._initialize_bones()
+        self.all_landmarks = []
 
     def _save_embedding(self, image_path):
         """Utility function to save embedding."""
@@ -168,15 +168,14 @@ class HandDatabase:
                     dir_name = os.path.splitext(os.path.basename(closest_image))[0]
                     target_dir = os.path.join(self.database_path, dir_name)
                     shutil.copy2(full_path, target_dir)
-                    return crop_detected.multi_hand_landmarks[0].landmark
+                    return (target_dir, crop_detected.multi_hand_landmarks[0])
         return None
 
     def collect_hand_gesture_data(self, capture_delay=1):
         start_class = len(self.processed_images)
         number_of_classes = int(input("Enter the number of new classes to collect: ")) + start_class
-
+        cap = cv2.VideoCapture(0)
         while start_class < number_of_classes:
-            cap = cv2.VideoCapture(0)
             frame = self._capture_frame(cap)
             if frame is None:
                 continue
@@ -205,11 +204,10 @@ class HandDatabase:
                         self._display_message(frame, 'Too similar, try again', (100, 100), (0, 255, 0))
                 else:
                     self._display_message(frame, 'Couldn\'t find hands, try again', (100, 100), (0, 255, 0))
-                    continue
             else:
                 self._display_message(frame, 'Couldn\'t find hands, try again', (100, 100), (0, 255, 0))
-                continue
         cap.release()
+        cv2.destroyAllWindows()
         save_to_pickle(self.processed_images, self.pickle_path)
 
     def generate_database(self):
@@ -222,9 +220,6 @@ class HandDatabase:
             pickle_path = os.path.join(target_dir, f"{os.path.splitext(filename)[0]}.pickle")
 
     def distribute_downloads(self):
-        # Dictionary to store landmarks for each image
-        all_landmarks = {}
-
         # First, gather all the image file paths.
         image_paths = []
         for dirpath, _, filenames in os.walk(self.download_path):
@@ -233,17 +228,44 @@ class HandDatabase:
                 if is_image(full_path):
                     image_paths.append(full_path)
 
-        # Now, iterate over the image paths with the tqdm progress bar.
+        # Dictionary to store landmarks per directory
+        dir_landmarks = {}
+        # Process each image and categorize landmarks by directory
         for image_path in tqdm(image_paths, desc="Processing images", unit="image"):
-            landmarks = self._add_to_db(image_path)
-            if landmarks:
-                image_name = os.path.splitext(os.path.basename(image_path))[0]
-                all_landmarks[image_name] = landmarks
+            result = self._add_to_db(image_path)
 
-        # Save all landmarks in one pickle file
-        pickle_path = os.path.join(self.pickle_dir, "all_landmarks.pickle")
-        with open(pickle_path, 'wb') as f:
-            pickle.dump(all_landmarks, f)
+            if result:
+                target_dir, landmarks = result
+                if target_dir not in dir_landmarks:
+                    dir_landmarks[target_dir] = []
+                dir_landmarks[target_dir].append(landmarks)
+
+        for dir_path, landmarks_list in tqdm(dir_landmarks.items(), desc="Processing directories", unit="directory"):
+            data = []      
+            for img_path in os.listdir(os.path.join(dir_path)):
+            # Create a filename for the pickle file based on the directory name
+                pickle_filename = os.path.basename(dir_path) + "_landmarks.pickle"
+                pickle_path = os.path.join(self.pickle_dir, pickle_filename)
+                data_aux = []
+                x_ = []
+                y_ = []
+                # print(landmarks_list)
+                for hand_landmarks in landmarks_list:
+                    for i in range(len(hand_landmarks.landmark)):
+                        x = hand_landmarks.landmark[i].x
+                        y = hand_landmarks.landmark[i].y
+
+                        x_.append(x)
+                        y_.append(y)
+
+                    for i in range(len(hand_landmarks.landmark)):
+                        x = hand_landmarks.landmark[i].x
+                        y = hand_landmarks.landmark[i].y
+                        data_aux.append(x - min(x_))
+                        data_aux.append(y - min(y_))
+                data.append(data_aux)
+            save_to_pickle(data, pickle_path)
+
             
 def display_media(frame, hands):
     for hand_landmarks in hands.multi_hand_landmarks:
@@ -281,6 +303,8 @@ def delete_directories(*dirs):
             print(f"Deleted {directory}")
         else:
             print(f"{directory} does not exist.")
+
+
 if __name__ == "__main__":
     mp_hands = mp.solutions.hands
     hands_processor = mp_hands.Hands(static_image_mode=True)
@@ -293,7 +317,7 @@ if __name__ == "__main__":
         "newHand_path": "backend/newHand",
         "hands_processor": hands_processor
     }
-    delete_directories(config["bones_path"], config["database_path"], config["pickle_dir"])
+    delete_directories(config["bones_path"], config["database_path"], config["pickle_dir"], config["newHand_path"])
     database = HandDatabase(config)
     database.collect_hand_gesture_data()
     database.generate_database()

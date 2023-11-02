@@ -274,6 +274,7 @@ class HandDatabase:
                         cv2.imshow('frame', frame)
                         cv2.waitKey(1000)  # Pause for a bit before trying again
             cap.release()
+            cv2.destroyAllWindows()
         save_to_pickle(self.processed_images, self.pickle_path)
         
   
