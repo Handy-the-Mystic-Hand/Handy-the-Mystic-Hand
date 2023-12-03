@@ -22,9 +22,10 @@ for dir_ in os.listdir(DATA_DIR):
     for img_path in os.listdir(os.path.join(DATA_DIR, dir_)):
         data_aux = []
 
-        img = cv2.imread(os.path.join(DATA_DIR, dir_, img_path))
+        img = cv2.resize(cv2.imread(os.path.join(DATA_DIR, dir_, img_path)), (1920, 1080))
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+        H, W, _ = img_rgb.shape
         results = hands.process(img_rgb)
         if results.multi_hand_landmarks:
             hand_landmarks = results.multi_hand_landmarks[0]
@@ -37,11 +38,11 @@ for dir_ in os.listdir(DATA_DIR):
                 x_.append(x)
                 y_.append(y)
 
-            x1 = int(min(x_) * 640) - 10
-            y1 = int(min(y_) * 480) - 10
+            x1 = int(min(x_) * W) - 10
+            y1 = int(min(y_) * H) - 10
 
-            x2 = int(max(x_) * 640) + 10
-            y2 = int(max(y_) * 480) + 10
+            x2 = int(max(x_) * W) + 10
+            y2 = int(max(y_) * H) + 10
             dist_weight = max(abs(x2 - x1), abs(y2 - y1))
             wrist_x = hand_landmarks.landmark[0].x
             wrist_y = hand_landmarks.landmark[0].y
@@ -49,7 +50,7 @@ for dir_ in os.listdir(DATA_DIR):
                 if not i in ignore:
                     x = hand_landmarks.landmark[i].x
                     y = hand_landmarks.landmark[i].y
-                    dist = sqrt((x - wrist_x)**2 + (y - wrist_y)**2)*640/dist_weight
+                    dist = sqrt((x - wrist_x)**2 + (y - wrist_y)**2)*W/dist_weight
                     data_aux.append(dist)
             data.append(data_aux)
             labels.append(int(dir_))
