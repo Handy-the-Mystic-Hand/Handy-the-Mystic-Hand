@@ -1,0 +1,13 @@
+.data
+.database
+.leapGestRecog
+.simi100
+model.p
+*.pickle
+*.png
+*.pkl
+*.p
+backend/database
+backend/download
+backend/newHand
+__pycache__
