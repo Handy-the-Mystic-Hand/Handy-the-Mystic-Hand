@@ -12,26 +12,38 @@ Handy, the Mystic Hand
 
 [Link to GitHub Repository](https://github.com/Handy-the-Mystic-Hand/Handy-the-Mystic-Hand)
 
+## Final Product & Summary
+
+What we have now: 
+
+12 hand signs for the user to choose from, the first 9 are default sign and functions pair while the last 3 are customizable hand signs.
+
+The Included hand signs are:
+
+![[pig.jpg]]
+
+
+The prompt to ask user for customizable new functions:
+
+
+![[Screenshot 2023-12-03 at 9.48.17 PM.png
+![[Screenshot 2023-12-03 at 9.48.03 PM.png]]
+
+![[Screenshot 2023-12-03 at 9.48.17 PM 1.png]]
+
+The Accuracy of our model is: 90%
+
+![[accuracy.jpg]]
 ## Distribution of Responsibilities in the Group
 
 - Yo-Hsuan Chen:
-
-  - Clustering Data
-  - Clean Data
-  - Manage Database
-  - Operating System Environment Set Up
+	- Model Training and Training Algorithm Selection
 
 - Haike Yu:
-
-  - Model Building
-  - Model Testing
-  - Write Report
-  - Prepare Presentation
+	- Data Gathering and Filtering, Data Model Training
 
 - Suqing Liu:
-  - Connection of Operation System
-  - Model Training
-  - Building Software Development Kit
+	- Connection of Operation System. Building Software Development Kit
 
 ## Machine-vision Problem
 
@@ -71,15 +83,6 @@ We found it to be a revolutionary change if we could control our systems with no
 ## Source Code Repository Set Up
 
 - Yo-Hsuan Chen
-
-## Distribution of Tasks for this Report
-
-- Search Database
-- Build Repo
-- Discuss Acceptance and Topic
-- Write Report
-
-[Link to GitHub Repository](https://github.com/Handy-the-Mystic-Hand/Handy-the-Mystic-Hand)
 
 ## Resources
 
