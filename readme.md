@@ -25,11 +25,9 @@ The Included hand signs are:
 
 The prompt to ask user for customizable new functions:
 
-![](./Screenshot 2023-12-03 at 9.48.03 PM 10.02.27 PM.png)
+![](./1.png)
 
-![](./Screenshot 2023-12-03 at 9.48.17 PM.png)
-
-
+![](./2.png)
 
 The Accuracy of our model is: 90%
 
