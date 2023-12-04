@@ -25,9 +25,9 @@ The Included hand signs are:
 
 The prompt to ask user for customizable new functions:
 
-![](./1.png)
+![](./1.jpg)
 
-![](./2.png)
+![](./2.jpg)
 
 The Accuracy of our model is: 90%
 
