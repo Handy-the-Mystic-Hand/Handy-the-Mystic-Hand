@@ -2,10 +2,11 @@
 
 # Important Sections
 
-- Documentation | documentatin.pdf
-- Running the model | inference_classifier.py
-- model | model.p
-- datasets | Backend folder
+- Documentation | **Documentation.pdf**
+- Poster | **Poster.pdf**
+- Running the model | **inference_classifier.py**
+- model | **model.p**
+- datasets | **Backend folder**
 
 # How to run our code
 
