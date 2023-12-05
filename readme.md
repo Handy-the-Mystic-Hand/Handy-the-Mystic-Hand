@@ -7,6 +7,18 @@
 - model | model.p
 - datasets | Backend folder
 
+# How to run our code
+
+- install all required dependencies from requirements.txt
+- npm i -g requirements.txt
+
+- Run inference_classifier.py
+- python3 inference_classifier.py
+
+- Input your desired customized function for hand size # 9, 10, 11
+
+- Everything should start to work.
+
 ## Team Member
 
 - Yo-Hsuan Chen
