@@ -71,7 +71,11 @@ def read_pickle(path):
         data = pickle.load(f)
         # Assuming the data is a list or other iterable
         for item in data:
-            print(item)
+            # print(item)
+            print(item[1])
+            print(len(item[1]))
+            # print(len(item))
+            break
 
 if __name__ == "__main__":
     # SOURCE_DIR = "leapGestRecog"
@@ -80,4 +84,4 @@ if __name__ == "__main__":
     # directory_path = '/Users/haikeyu/Desktop/bones'
     # rename_files(directory_path)
     # find_hand_from_image("/Users/haikeyu/Desktop/CSC490/Handy-the-Mystic-Hand/backend/bones/2.png")
-    read_pickle("/Users/haikeyu/Desktop/CSC490/Handy-the-Mystic-Hand/backend/pickles/bonesPickle.pickle")
+    read_pickle("/Users/haikeyu/Desktop/Handy-the-Mystic-Hand/backend/pickles/bonesPickle.pickle")
