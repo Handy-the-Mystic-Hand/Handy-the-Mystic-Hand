@@ -83,7 +83,7 @@ We found it to be a revolutionary change if we could control our systems with no
 
 ## Dataset Access
 
-- Haiki Yu
+- Haike Yu
 
 ## Source Code Repository Set Up
 
