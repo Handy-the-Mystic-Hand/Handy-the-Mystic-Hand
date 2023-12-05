@@ -13,7 +13,7 @@ mp_drawing_styles = mp.solutions.drawing_styles
 # Create a Hands object with specific parameters
 hands = mp_hands.Hands(static_image_mode=True, min_detection_confidence=0.3)
 
-DATA_DIR = './data'  # Directory containing the hand images
+DATA_DIR = './backend/database'  # Directory containing the hand images
 
 data = []  # List to store the processed data
 labels = []  # List to store the labels (categories) of the hand poses
