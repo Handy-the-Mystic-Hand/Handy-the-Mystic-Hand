@@ -48,7 +48,7 @@ The prompt to ask user for customizable new functions:
 
 ![](./2.jpg)
 
-The Accuracy of our model is: 90%
+The Accuracy of our model is: 82%
 
 ![](./accuracy.jpg)
 ## Distribution of Responsibilities in the Group
