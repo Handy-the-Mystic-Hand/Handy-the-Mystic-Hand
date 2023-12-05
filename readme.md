@@ -1,5 +1,12 @@
 # Handy-the-Mystic-Hand
 
+# Important Sections
+
+- Documentation | documentatin.pdf
+- Running the model | inference_classifier.py
+- model | model.p
+- datasets | Backend folder
+
 ## Team Member
 
 - Yo-Hsuan Chen
