@@ -189,6 +189,7 @@ def main():
                     mouse_on = False
                 if in_action and prediction == 1:
                     mouse_on = True
+                    in_action = False
                 if mouse_on:
                     index_x = hand_landmark.landmark[8].x * screen_width
                     index_y = hand_landmark.landmark[8].y * screen_height
@@ -199,9 +200,9 @@ def main():
                 if in_action and prediction == 3:
                     alt_tab()
                     in_action = False
-                # if prediction == 7:
-                #     pyautogui.press('esc')
-                #     in_action = False
+                if prediction == 7:
+                    pyautogui.press('esc')
+                    in_action = False
                 if in_action and prediction == 5:
                     swipe_right()
                     in_action = False
