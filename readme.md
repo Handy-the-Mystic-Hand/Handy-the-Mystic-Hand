@@ -20,6 +20,9 @@
 
 - Everything should start to work.
 
+
+- Remeber to change the cap = cv2.VideoCapture(0) to your specific camera ID #it would be 0 in our case
+
 ## Team Member
 
 - Yo-Hsuan Chen
